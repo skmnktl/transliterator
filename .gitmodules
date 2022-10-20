@@ -1,0 +1,3 @@
+[submodule "common_maps"]
+	path = common_maps
+	url = git@github.com:indic-transliteration/common_maps.git
