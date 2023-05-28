@@ -10,3 +10,4 @@ toml = "0.5.9"
 fs = "0.0.5"
 clap = { version = "4.2.4", features = ["derive"] }
 unicode-segmentation = "1.10.1"
+sum_type = "0.2.0"

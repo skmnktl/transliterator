@@ -1,103 +1,109 @@
-use std::collections::{HashMap, HashSet};
+use std::collections::{HashMap};
 use toml;
+use crate::types;
 
 #[derive(Debug, Clone)]
-pub enum ScriptName{
+pub enum ScriptName {
     Telugu,
     IastIso,
-    Devanagari
+    Devanagari,
+    EnumNames,
 }
 
 type ScriptMap = HashMap<String, HashMap<String, toml::Value>>;
 
-pub fn read_script(which: &ScriptName)-> ScriptMap{
-
-    let script = match *which{
-      ScriptName::Telugu => include_str!("../common_maps/brahmic/telugu.toml"),
-      ScriptName::IastIso => include_str!("../common_maps/roman/iast_iso_m.toml"),
-      ScriptName::Devanagari => include_str!("../common_maps/brahmic/devanagari.toml"),
+pub fn read_script(which: &ScriptName) -> ScriptMap {
+    let script = match *which {
+        ScriptName::Telugu => include_str!("../common_maps/brahmic/telugu.toml"),
+        ScriptName::IastIso => include_str!("../common_maps/roman/iast_iso_m.toml"),
+        ScriptName::Devanagari => include_str!("../common_maps/brahmic/devanagari.toml"),
+        ScriptName::EnumNames => include_str!("../common_maps/enum_names.toml"),
     };
     let script: ScriptMap = toml::from_str(script).unwrap();
     script
 }
 
-pub fn get_category(input_script: &ScriptName, output_script: &ScriptName, category_to_get: Option<&str>) -> HashMap<String, String>{
-    /*
-     * Takes two ScriptMaps that are the to and from scripts. Takes a category if only one category
-     * is desired. Else pass in None for all categories. 
-     */
-    let left = read_script(input_script);
-    let right = read_script(output_script);
+
+pub fn script_to_deva(which: &ScriptName) -> ScriptMap{
     
-    let mut output_script: HashMap::<String, String> = HashMap::new();
-
-    for category in left.keys(){
-        if !category_to_get.is_none() && Some(category.clone().as_str()) != category_to_get{
-            continue
+    let script = read_script(which);
+    let mut inverted = ScriptMap::new();
+    let mut sub = HashMap::<String, toml::Value>::new();
+    for i in ["vowels","vowel_marks", "yogavaahas","virama","accents", "consonants", "symbols"].iter(){
+        let category = script.get(&i.to_string());
+        if category.is_none(){
+            continue;
         }
-        let empty = HashMap::<String, toml::Value>::new();
-        let left_category = left.get(category).cloned().unwrap_or(empty.clone());
-        let right_category = right.get(category).cloned().unwrap_or(empty.clone());
-        
-        for character in left_category.keys(){
-            let mut left_values: toml::Value = toml::Value::String("".to_string());
-            let mut right_values: toml::Value = toml::Value::String("".to_string());
-            
-            if let Some(l) = left_category.get(character){
-                left_values = l.clone();
-            } 
-            if let Some(r) = right_category.get(character){
-                right_values = r.clone();
-            };
-
-            let left_val = match left_values{
-             toml::Value::String(x) => Some(x),
-             _ => None
-            };
-
-            let right_val = match right_values{
-               toml::Value::String(x) => Some(x),
-                _ => None
-            };
-
-            if !left_val.is_none() && !right_val.is_none(){
-                output_script.insert(left_val.unwrap(), right_val.unwrap());
-                continue;
-            } else {
-                // Note that left_val can't be none because it is alway a single char, never a
-                // toml::Value::Array. 
-                if right_val.is_none(){
-                    println!("{}", format!("Support for 1:Many maps of characters not yet implemented. Skipping {character} for now."));
-                }
-
+        for (k,v) in category.unwrap().iter(){
+            if v.is_str(){
+                let new_key = v.to_string().replace("\"","");
+                sub.insert(new_key,toml::Value::String(k.clone().to_string()));
             }
         }
-
+        inverted.insert(i.to_string(), sub.clone());
+        sub = HashMap::<String, toml::Value>::new();
+        
     }
-    output_script
+    inverted
 }
 
-pub fn get_category_by_lengths(input_script: &ScriptName, output_script: &ScriptName, category_to_get: Option<&str>) -> (Vec<HashMap<String, String>>, Vec<usize>){
-    let mut category = get_category(input_script, output_script, category_to_get);
-    let mut results = vec![];
-    let mut result = HashMap::<String, String>::new();
-    let mut lengths = HashSet::<usize>::new();    
-    for (key, val) in category.iter(){
-        lengths.insert(key.len());
-    }
-    let mut lengths: Vec<usize> = lengths.into_iter().collect();
-    lengths.sort_by(|a, b| b.cmp(a));
+#[derive(Debug)]
+pub struct TokenMap{
+    pub Vowels: HashMap<char, types::TokensAggregated>,
+    pub VowelMarks: HashMap<char, types::TokensAggregated>,
+    pub Accents: HashMap<char, types::TokensAggregated>,
+    pub Consonants: HashMap<char, types::TokensAggregated>,
+    pub Yogavāhas: HashMap<char, types::TokensAggregated>,
+    pub Symbols: HashMap<char, types::TokensAggregated>,
+    pub Virāmam: HashMap<char, types::TokensAggregated>
+}
 
-    for l in lengths.iter(){
-        for (key, val) in category.iter(){
-            if key.len() == *l{
-                    result.insert(key.to_string(), val.to_string());
-            }
+impl TokenMap{
+    pub fn new() -> TokenMap{
+        TokenMap{
+            Vowels: HashMap::<char, types::TokensAggregated>::new(), 
+            VowelMarks: HashMap::<char, types::TokensAggregated>::new(),
+            Accents: HashMap::<char, types::TokensAggregated>::new(),
+            Consonants: HashMap::<char, types::TokensAggregated>::new(),
+            Yogavāhas: HashMap::<char, types::TokensAggregated>::new(),
+            Symbols: HashMap::<char, types::TokensAggregated>::new(),
+            Virāmam: HashMap::<char, types::TokensAggregated>::new()
         }
-        results.push(result.clone());
-        result = HashMap::<String, String>::new();
+    } 
+}
+
+pub fn mapping_character_to_token(which: &ScriptName) -> TokenMap{
+    let script = script_to_deva(&which);
+    let mut map_to_tokens = TokenMap::new();
+
+    for (category, mapping) in script.iter(){
+        for (c, value) in mapping.iter(){
+            let chr_vec = c.to_string().chars().collect::<Vec<char>>();
+            let val_vec = value.to_string().replace("\"","").chars().collect::<Vec<char>>();
+            if chr_vec.len()==0{
+                continue;
+            }
+            if val_vec.len()==0{
+                continue;
+            }
+            let chr = chr_vec[0];
+            let val = val_vec[0];
+            let tok = types::deva_to_enum(val);
+            match category.as_str(){
+                "vowels" => map_to_tokens.Vowels.insert(chr,tok),
+                "vowel_marks" => map_to_tokens.VowelMarks.insert(chr,tok),
+                "accents" => map_to_tokens.Accents.insert(chr,tok),
+                "consonants" => map_to_tokens.Consonants.insert(chr,tok),
+                "yogavaahas" => map_to_tokens.Yogavāhas.insert(chr,tok),
+                "symbols" => map_to_tokens.Symbols.insert(chr,tok),
+                "virama" => map_to_tokens.Virāmam.insert(chr,tok),
+                _ => None
+            };
+        }
     }
-    println!("{:?}", results);
-    (results, lengths)
-}   
+    map_to_tokens
+}
+
+
+
 

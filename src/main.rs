@@ -1,11 +1,10 @@
-use std::fs;
-use clap::{Arg, Command};
-use std::env;
-use std::collections::HashMap;
 use unicode_segmentation::UnicodeSegmentation;
+use clap::{Arg, Command};
+use std::fs;
+use std::env;
 
 mod scripts;
-mod tests;
+mod types;
 
 #[derive(Debug)]
 pub struct UserInputContext{
@@ -18,6 +17,7 @@ pub struct UserInputContext{
 #[derive(Debug)]
 pub struct Text{
     original: Vec<char>,
+    intermediate_representation: Vec<types::Token<types::Vowels, types::VowelMarks, types::Accents, types::Consonants, types::Yogavāhas, types::Symbols, types::Virāma>>,
     transliterated: String
 }
 
@@ -28,25 +28,6 @@ pub fn generate_scriptname_from_arg(user_input: &str) -> Option<scripts::ScriptN
         "iast_iso" => Some(scripts::ScriptName::IastIso),
         _ => None
     }
-}
-
-pub fn read_file(filename: &str) -> Text {
-    let contents = fs::read_to_string(filename);
-    let contents = match contents {
-        Ok(code) => code,
-        Err(e) => e.to_string(),
-    };
-    let mut contents_vector: Vec<char> = Vec::new();
-    let mut raw_contents: Vec<&str> = UnicodeSegmentation::graphemes(contents.as_str(), true).collect::<Vec<&str>>();
-   
-    
-    for strs in raw_contents.iter(){
-        for chr in strs.chars(){
-           contents_vector.push(chr); 
-        }
-    }
-    
-    Text{original: contents_vector, transliterated: "".to_string()}
 }
 
 fn create_context()->UserInputContext{
@@ -68,90 +49,65 @@ fn create_context()->UserInputContext{
     context
 }
 
-fn generate_syllables(i: &usize, text: &Vec<char>) -> Vec<Option<String>>{
-    let mut one = String::new();
-    let mut two = String::new();
-    let mut three = String::new();
-
-    let a: char = *text.get(*i).unwrap();
-    let mut b: char = '\0';
-    let mut c: char = '\0';
-
-    one.push(a.clone());
-    let ret_one: Option<String> = Some(one);
-    let mut ret_two: Option<String> = None;
-    let mut ret_three: Option<String> = None;
-
-    if *i<=text.len()-2{ 
-        b = *text.get(*i+1).unwrap();
-        two.push(a.clone());
-        two.push(b.clone());
-        ret_two = Some(two);
+pub fn read_file(filename: &str) -> Text {
+    let contents = fs::read_to_string(filename);
+    let contents = match contents {
+        Ok(code) => code,
+        Err(e) => panic!("{:?}", e),
+    };
+    let mut contents_vector: Vec<char> = Vec::new();
+    let mut raw_contents: Vec<&str> = UnicodeSegmentation::graphemes(contents.as_str(), true).collect::<Vec<&str>>();
+    for strs in raw_contents.iter_mut(){
+        contents_vector.append(&mut strs.chars().collect::<Vec<char>>()); 
     }
-    if *i<=text.len()-3{
-        c = *text.get(*i+2).unwrap();
-        three.push(a.clone());
-        three.push(b.clone());
-        three.push(c.clone());
-        ret_three = Some(three);
-    }
-    println!("{} {:?} {:?} {:?}", *i, ret_three, ret_two, ret_one);
-    vec![ret_three, ret_two, ret_one]
+    Text{original: contents_vector, intermediate_representation: vec![], transliterated: "".to_string()}
 }
 
-pub fn transliterate_token(text: &Vec<char>, start: usize, end: usize, mappings: &Vec<HashMap<String, String>>, lengths: &Vec<usize>) -> String{
-    let mut original = String::new();
-    let mut result = String::new();
-
-    let mut skip_till = 0;
-    for i in start..end{
-        original.push('|');
-        original.push(text[i].clone());
-        if skip_till>i{
-            continue;
-        }
-        
-        let toks = generate_syllables(&i, text);
-        let mut get: Option<&String>;
-            
-        'outer: for map in mappings{
-            let mut skip_val = 3;
-            for tok in 0..toks.len(){
-                if !toks[tok].is_none(){
-                    let search_token = toks[tok].as_ref().unwrap();
-                    get = map.get(search_token);
-                    println!("{search_token} -> {:?}", get);
-                    if !get.is_none(){
-                        let gotten = get.unwrap();
-                        result.push_str(gotten);
-                        skip_till = i+skip_val;
-                        break 'outer;
-                    }
-                    skip_val -= 1;
-            }
-            }
-        }
-
-                    
+fn char_to_token(chr: char, mapping: &scripts::TokenMap) -> types::TokensAggregated{
+    
+    let vowel = mapping.Vowels.get(&chr);
+    let vowelmarks = mapping.VowelMarks.get(&chr);
+    let accents = mapping.Accents.get(&chr);
+    let consonants = mapping.Consonants.get(&chr);
+    let yogavahas = mapping.Yogavāhas.get(&chr);
+    let viramam = mapping.Virāmam.get(&chr);
+    println!("{:?}", vowel);
+    if !vowel.is_none(){
+        vowel.unwrap().clone()
+    } else if !vowelmarks.is_none(){
+        vowelmarks.unwrap().clone()
+    } else if !accents.is_none(){
+       accents.unwrap().clone()
+    } else if !consonants.is_none(){
+        consonants.unwrap().clone()
+    } else if !yogavahas.is_none(){
+        yogavahas.unwrap().clone()
+    } else if !viramam.is_none(){
+        viramam.unwrap().clone()
+    } else{
+        types::TokensAggregated::Unk(chr)
     }
 
-    println!("{original} -> {result}");
-    result
 }
 
-pub fn tokens2transliterate(text: &mut Text, context: &UserInputContext){
-    let all = scripts::get_category(context.input.as_ref().unwrap(), context.output.as_ref().unwrap(), None);
-     let script_and_lengths = scripts::get_category_by_lengths(context.input.as_ref().unwrap(), context.output.as_ref().unwrap(), None);
-     let mappings = script_and_lengths.0;
-     let lengths = script_and_lengths.1;
-
-        
-    transliterate_token(&text.original, 0, 10, &mappings, &lengths);
+fn clean_up_vowel_to_vowelmarks(){
 }
 
-fn main(){
-    env::set_var("RUST_BACKTRACE", "1");
+fn txt_to_tokens(text: &mut Text, mapping: &scripts::TokenMap) -> Vec<types::TokensAggregated> {  
+    let mut tokens = vec![];
+    for c in text.original.iter(){
+        let t = char_to_token(*c, mapping);
+        tokens.push(t);
+    }
+    tokens
+}
+
+fn main() {
+    //env::set_var("RUST_BACKTRACE", "full");
     let context = create_context();
     let mut text = read_file(context.filename.as_str());
-    tokens2transliterate(&mut text, &context);
-}
+    let tokenmapping = scripts::mapping_character_to_token(&context.input.unwrap());
+    let toks = txt_to_tokens(&mut text, &tokenmapping);
+    println!("{:?}", toks);
+    
+}   
