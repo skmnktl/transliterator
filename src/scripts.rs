@@ -7,7 +7,6 @@ pub enum ScriptName {
     Telugu,
     IastIso,
     Devanagari,
-    EnumNames,
 }
 
 type ScriptMap = HashMap<String, HashMap<String, toml::Value>>;
@@ -16,8 +15,7 @@ pub fn read_script(which: &ScriptName) -> ScriptMap {
     let script = match *which {
         ScriptName::Telugu => include_str!("../common_maps/brahmic/telugu.toml"),
         ScriptName::IastIso => include_str!("../common_maps/roman/iast_iso_m.toml"),
-        ScriptName::Devanagari => include_str!("../common_maps/brahmic/devanagari.toml"),
-        ScriptName::EnumNames => include_str!("../common_maps/enum_names.toml"),
+        ScriptName::Devanagari => include_str!("../common_maps/brahmic/devanagari.toml")
     };
     let script: ScriptMap = toml::from_str(script).unwrap();
     script
