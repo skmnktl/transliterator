@@ -1,8 +1,8 @@
-use std::fmt;
 use std::collections::HashMap;
+use std::fmt;
 
 #[allow(non_camel_case_types)]
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum Vowels {
     a,
     ā,
@@ -22,7 +22,7 @@ pub enum Vowels {
     au,
 }
 #[allow(non_camel_case_types)]
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum VowelMarks {
     a,
     ā,
@@ -43,7 +43,7 @@ pub enum VowelMarks {
 }
 
 #[allow(non_camel_case_types)]
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum Yogavāhas {
     ṃ,
     ḥ,
@@ -51,13 +51,13 @@ pub enum Yogavāhas {
 }
 
 #[allow(non_camel_case_types)]
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum Virāma {
     virāma,
 }
 
 #[allow(non_camel_case_types)]
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum Accents {
     udātta,
     anudātta,
@@ -65,7 +65,7 @@ pub enum Accents {
 }
 
 #[allow(non_camel_case_types)]
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum Consonants {
     k,
     kh,
@@ -106,7 +106,7 @@ pub enum Consonants {
 }
 
 #[allow(non_camel_case_types)]
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum Symbols {
     zero,
     one,
@@ -123,10 +123,10 @@ pub enum Symbols {
     daṇḍa,
     dvidaṇḍa,
     whitespace,
-    newline
+    newline,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum Token<Vowels, VowelMarks, Accents, Consonants, Yogavāhas, Symbols, Virāma> {
     Vowel(Vowels),
     VowelMark(VowelMarks),
@@ -135,20 +135,19 @@ pub enum Token<Vowels, VowelMarks, Accents, Consonants, Yogavāhas, Symbols, Vir
     Yogavāha(Yogavāhas),
     Symbol(Symbols),
     Virāmam(Virāma),
-    Unk(char)
+    Unk(char),
 }
 
-pub type TokensAggregated = Token<Vowels, VowelMarks, Accents, Consonants, Yogavāhas, Symbols, Virāma>;
+pub type TokensAggregated =
+    Token<Vowels, VowelMarks, Accents, Consonants, Yogavāhas, Symbols, Virāma>;
 
-
-impl fmt::Display for TokensAggregated{
+impl fmt::Display for TokensAggregated {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{:?}", self)
     }
 }
 
-
-pub fn deva_to_enum(token: char) -> TokensAggregated{
+pub fn deva_to_enum(token: char) -> TokensAggregated {
     match token {
         'अ' => Token::Vowel(Vowels::a),
         'आ' => Token::Vowel(Vowels::ā),
@@ -210,11 +209,11 @@ pub fn deva_to_enum(token: char) -> TokensAggregated{
         'े' => Token::VowelMark(VowelMarks::e),
         'ै' => Token::VowelMark(VowelMarks::ai),
         'ॊ' => Token::VowelMark(VowelMarks::ò),
-        'ो' =>Token::VowelMark(VowelMarks::o),
-        'ौ' =>Token::VowelMark(VowelMarks::au),
+        'ो' => Token::VowelMark(VowelMarks::o),
+        'ौ' => Token::VowelMark(VowelMarks::au),
         'ँ' => Token::Yogavāha(Yogavāhas::candrabindu),
         'ं' => Token::Yogavāha(Yogavāhas::ṃ),
-        'ः' =>Token::Yogavāha(Yogavāhas::ḥ),
+        'ः' => Token::Yogavāha(Yogavāhas::ḥ),
         '्' => Token::Virāmam(Virāma::virāma),
         '॑' => Token::Accent(Accents::udātta),
         '॒' => Token::Accent(Accents::anudātta),
@@ -222,10 +221,7 @@ pub fn deva_to_enum(token: char) -> TokensAggregated{
         '।' => Token::Symbol(Symbols::daṇḍa),
         '॥' => Token::Symbol(Symbols::dvidaṇḍa),
         ' ' => Token::Symbol(Symbols::whitespace),
-        '\n' => Token::Symbol(Symbols::newline), 
-        _ => Token::Unk(token)
-    }   
+        '\n' => Token::Symbol(Symbols::newline),
+        _ => Token::Unk(token),
+    }
 }
-
-
-
