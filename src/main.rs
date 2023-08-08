@@ -71,7 +71,6 @@ fn char_to_token(chr: char, mapping: &scripts::TokenMap) -> types::TokensAggrega
     let consonants = mapping.Consonants.get(&chr);
     let yogavahas = mapping.Yogavāhas.get(&chr);
     let viramam = mapping.Virāmam.get(&chr);
-    println!("{:?}", vowel);
     if !vowel.is_none(){
         vowel.unwrap().clone()
     } else if !vowelmarks.is_none(){
