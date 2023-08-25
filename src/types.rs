@@ -124,7 +124,6 @@ pub enum Consonant {
     L,
 }
 
-
 impl Token for Vowel{}
 
 impl Token for VowelMark{}

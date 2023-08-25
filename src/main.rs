@@ -8,6 +8,7 @@ use std::collections::HashMap;
 use toml;
 
 mod types;
+mod scanner;
 
 
 #[derive(Debug, Clone)]
