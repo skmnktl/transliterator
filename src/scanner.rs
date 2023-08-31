@@ -1,6 +1,13 @@
 /*
- * Objective: For each input, we must generate a vector of chars. 
+ * Objective: 
+ *  For each input, we must generate a vector of chars for a given input. 
+ *  There are two ways about this. One is to produce graphemes. That is, we can produce 
+ *  what renders to the eye as a single character, but is in fact a set of characters that 
+ *  have combined. Alternatively, we could parse all characters out into distinct units
+ *  disregarding the fact that a character is meant to combine. 
  *
+ *  We include functions to produce chars and graphemes for both indic and roman inputs   
+ *  although we will only use one or the other for transliteration.
  */
 use unicode_segmentation::UnicodeSegmentation;
 
@@ -18,7 +25,7 @@ pub fn indic_to_chars(input: String) -> Vec<String>{
 }
 
 
-pub fn roman_to_chars(input: String) -> Vec<String>{
+pub fn roman_to_graphemes(input: String) -> Vec<String>{
     let result = input.chars().map(|c| c.to_string()).collect::<Vec<String>>();
     result.to_vec()
 }
@@ -28,10 +35,10 @@ mod tests {
     use super::*;
     
     #[test]
-    fn test_roman_to_chars() {
+    fn test_roman_to_graphemes() {
         let input: String = "mahāsarasvatī".to_string();
         let expected = vec!["m","a","h","ā","s","a","r","a","s","v","a","t","ī"].into_iter().map(|c| c.to_string()).collect::<Vec<String>>();
-        assert_eq!(roman_to_chars(input), expected);
+        assert_eq!(roman_to_graphemes(input), expected);
    
     }
     
