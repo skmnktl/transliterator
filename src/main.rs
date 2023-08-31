@@ -3,37 +3,16 @@
 
 */
 
-
-use std::collections::HashMap;
-use toml;
-
-mod types;
+mod lexer;
 mod scanner;
-
-
-#[derive(Debug, Clone)]
-pub enum ScriptName {
-    Devanagari,
-}
-
-type ScriptMap = HashMap<String, HashMap<String, toml::Value>>;
-
-pub fn read_script(which: &ScriptName) -> ScriptMap {
-    let script = match *which {
-        ScriptName::Devanagari => include_str!("../maps/deva.toml"),
-    };
-    toml::from_str(script).unwrap()
-}
+mod types;
 
 fn main() {
-    let script = ScriptName::Devanagari;
-    println!("{:?}",read_script(&script));
+    let script = types::ScriptName::Devanagari;
+    println!("{:?}", lexer::read_script(&script));
 }
 
-
-mod test{
+mod test {
     //SLP1: aSman -> a, S, m, a, n
     //ITRANS: ashman -> a, sh, m, a, n
-
 }
- 

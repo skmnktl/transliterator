@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 #[allow(non_camel_case_types)]
 #[derive(PartialEq, PartialOrd)]
 #[repr(C)]
@@ -85,6 +87,15 @@ impl Token {
         return false;
     }
 }
+
+#[derive(Debug, Clone)]
+pub enum ScriptName {
+    Devanagari,
+    Telugu,
+    IastIso,
+}
+
+pub type ScriptMap = HashMap<String, HashMap<String, toml::Value>>;
 
 #[cfg(test)]
 mod tests {
