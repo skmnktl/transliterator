@@ -84,33 +84,43 @@ pub enum Token {
 }
 
 impl Token {
-    fn is_vowel(&self) -> bool {
+    pub fn is_vowel(&self) -> bool {
         if *self < Token::M {
             return true;
         }
         return false;
     }
 
-    fn is_yogavaha(&self) -> bool {
+    pub fn is_yogavaha(&self) -> bool {
         if (*self < Token::visarga) && (*self >= Token::M) {
             return true;
         }
         return false;
     }
 
-    fn is_consonant(&self) -> bool {
+    pub fn is_consonant(&self) -> bool {
         if (*self < Token::unk) && (*self >= Token::k) {
+            return true;
+        }
+        return false;
+    }
+
+    pub fn is_viraama(&self) -> bool {
+        if (*self == Token::viraama) {
             return true;
         }
         return false;
     }
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(PartialEq, PartialOrd, Debug, Clone, Copy)]
+#[repr(C)]
 pub enum ScriptName {
-    Devanagari,
+    // Brahmic scripts are enumerated starting at 1.
+    Devanagari = 1,
     Telugu,
-    IastIso,
+    // All roman scripts are in the 100 group
+    IastIso = 100,
 }
 
 pub type RawScriptMap = HashMap<String, HashMap<String, toml::Value>>;
@@ -147,5 +157,15 @@ mod tests {
     #[test]
     fn test_not_consonant() {
         assert_eq!(Token::a.is_yogavaha(), false);
+    }
+
+    #[test]
+    fn test_viraama() {
+        assert_eq!(Token::viraama.is_viraama(), true);
+    }
+
+    #[test]
+    fn test_not_viraama() {
+        assert_eq!(Token::a.is_viraama(), false);
     }
 }

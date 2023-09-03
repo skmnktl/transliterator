@@ -10,13 +10,24 @@ use crate::types::{RawScriptMap, ScriptMap, ScriptName, Token};
 use std::collections::HashMap;
 use toml;
 
+pub static CHAR_GROUPS: [&str; 8] = [
+    "vowels",
+    "vowel_marks",
+    "consonants",
+    "yogavaahas",
+    "virama",
+    "candra",
+    "symbols",
+    "placeholders",
+];
+
 pub fn read_script(which: &ScriptName) -> RawScriptMap {
     let script = match *which {
         ScriptName::Telugu => include_str!("../maps/brahmic/telugu.toml"),
         ScriptName::IastIso => include_str!("../maps/roman/iast_iso_m.toml"),
         ScriptName::Devanagari => include_str!("../maps/brahmic/devanagari.toml"),
     };
-    let script: RawScriptMap = toml::from_str(script).unwrap();
+    let mut script: RawScriptMap = toml::from_str(script).unwrap();
     script
 }
 
@@ -25,6 +36,12 @@ pub fn produce_scriptmap_group(
     group_name: String,
     invert: bool,
 ) -> HashMap<String, String> {
+    if group_name == "placeholders".to_string() {
+        return HashMap::from([
+            (" ".to_string(), " ".to_string()),
+            ("\n".to_string(), "\n".to_string()),
+        ]);
+    }
     let group = match script.get(&group_name) {
         Some(x) => x.clone(),
         None => HashMap::from([]),
@@ -46,15 +63,7 @@ pub fn produce_scriptmap_group(
 
 pub fn produce_scriptmap(script: &mut RawScriptMap, invert: bool) -> ScriptMap {
     let mut groups: ScriptMap = HashMap::from([]);
-    for group_name in vec![
-        "vowels",
-        "vowel_marks",
-        "consonants",
-        "yogavaahas",
-        "virama",
-        "candra",
-        "symbols",
-    ] {
+    for group_name in CHAR_GROUPS {
         groups.insert(
             group_name.to_string(),
             produce_scriptmap_group(script, group_name.to_string(), invert),
@@ -63,8 +72,8 @@ pub fn produce_scriptmap(script: &mut RawScriptMap, invert: bool) -> ScriptMap {
     groups
 }
 
-pub fn deva_to_enum(token: &str) -> Token {
-    match token {
+pub fn deva_to_enum(input: String) -> Token {
+    match input.as_str() {
         "अ" => Token::a,
         "आ" => Token::A,
         "इ" => Token::i,
@@ -270,14 +279,14 @@ mod tests {
     #[test]
     fn test_deva_to_enum() {
         for i in vec![("अ", Token::a), ("क", Token::k)].iter() {
-            assert_eq!(deva_to_enum(i.0), i.1);
+            assert_eq!(deva_to_enum(i.0.to_string()), i.1);
         }
     }
 
     #[test]
     fn test_enum_to_deva() {
         for i in vec![(Token::a, "अ"), (Token::k, "क")].iter() {
-            assert_eq!(enum_to_deva(i.0.clone()), i.1);
+            assert_eq!(enum_to_deva(i.0.clone()), i.1.to_string());
         }
     }
 }
