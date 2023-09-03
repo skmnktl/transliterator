@@ -1,8 +1,9 @@
 use std::collections::HashMap;
 
 #[allow(non_camel_case_types)]
-#[derive(PartialEq, PartialOrd)]
+#[derive(PartialEq, PartialOrd, Debug, Clone, Copy)]
 #[repr(C)]
+#[allow(unused_assignments)]
 pub enum Token {
     // Vowels
     a = 1,
@@ -27,16 +28,22 @@ pub enum Token {
     //Yogavahas
     M = 100,
     H,
-    N__y,
+    cbindu__y,
     // Symbols
     visarga = 200,
     cbindu,
+    danda,
+    dvidanda,
     // Svara
     anudaatta = 300,
     udaatta,
     svarita,
+    gm,
+    gg,
+    //virama
+    viraama = 400,
     // Consonants
-    k = 400,
+    k = 500,
     kh,
     g,
     gh,
@@ -67,9 +74,13 @@ pub enum Token {
     v,
     sh,
     Sh,
-    sa,
+    s,
     h,
     L,
+    //Others
+    unk = 600,
+    whitespace,
+    newline,
 }
 
 impl Token {
@@ -86,16 +97,24 @@ impl Token {
         }
         return false;
     }
+
+    fn is_consonant(&self) -> bool {
+        if (*self < Token::unk) && (*self >= Token::k) {
+            return true;
+        }
+        return false;
+    }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum ScriptName {
     Devanagari,
     Telugu,
     IastIso,
 }
 
-pub type ScriptMap = HashMap<String, HashMap<String, toml::Value>>;
+pub type RawScriptMap = HashMap<String, HashMap<String, toml::Value>>;
+pub type ScriptMap = HashMap<String, HashMap<String, String>>;
 
 #[cfg(test)]
 mod tests {
@@ -117,6 +136,16 @@ mod tests {
 
     #[test]
     fn test_not_yogavaha() {
+        assert_eq!(Token::a.is_yogavaha(), false);
+    }
+
+    #[test]
+    fn test_consonant() {
+        assert_eq!(Token::k.is_consonant(), true);
+    }
+
+    #[test]
+    fn test_not_consonant() {
         assert_eq!(Token::a.is_yogavaha(), false);
     }
 }
