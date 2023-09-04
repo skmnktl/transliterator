@@ -38,25 +38,26 @@ fn create_context(text: String, input: String, output: String) -> Transliteratio
     context
 }
 
-pub fn text_to_tokens(ctx: &mut TransliterationContext) {
-    let mut text_vector: Vec<String>;
+pub fn text_to_tokens(ctx: &mut TransliterationContext) -> Vec<types::Token> {
+    let text_vector: Vec<String>;
     if ctx.input.unwrap() < types::ScriptName::IastIso {
         text_vector = indic_to_chars(ctx.text.clone());
     } else {
         text_vector = roman_to_graphemes(ctx.text.clone());
     }
-
+    println!("{:?}", text_vector);
     let map_to_deva = lexer::produce_scriptmap(&mut lexer::read_script(&ctx.input.unwrap()), true);
     let mut tokenized: Vec<types::Token> = vec![];
-    println!("{}", ctx.text);
-    println!("{text_vector:?}");
     for i in text_vector.iter() {
+        println!("{i:?}");
         for group_name in lexer::CHAR_GROUPS {
             if map_to_deva.get(group_name).unwrap().contains_key(i) {
                 let replacement = map_to_deva.get(group_name).unwrap().get(i).unwrap();
                 let token = deva_to_enum(replacement.to_string());
-                if (token.is_viraama() && tokenized.last().unwrap().is_vowel())
-                    || (token.is_vowel() && tokenized.last().unwrap().is_vowel())
+                println!("{i:?} >> {token:?}");
+                if tokenized.len() > 0
+                    && ((token.is_viraama() && tokenized.last().unwrap().is_vowel())
+                        || (token.is_vowel() && tokenized.last().unwrap().is_vowel()))
                 {
                     tokenized.pop();
                     tokenized.push(token);
@@ -72,22 +73,15 @@ pub fn text_to_tokens(ctx: &mut TransliterationContext) {
             }
         }
     }
-    println!("{tokenized:?}");
+    tokenized
 }
 fn main() {
     let mut ctx = create_context(
-        "कैलासशिखरासीनम् अशेषामरपूजितम्
-कालघ्नं श्रीमहाकालम् ईश्वरं ज्ञानपारगम् ॥
-संपूज्य विधिवद् भक्त्या ऋष्यात्रेयः सुसंयतः
-सर्वभूतहितार्थाय पप्रच्छेदं महामुनिः ॥
-ज्ञानयोगं न विन्दन्ति ये नरा मन्दबुद्धयः
-ते मुच्यन्ते कथं घोराद् भगवन् भवसागरात् ॥
-ए"
-        .to_string(),
+        "इ॒षे त्वो॒र्जे".to_string(),
         "devanagari".to_string(),
         "telugu".to_string(),
     );
-    text_to_tokens(&mut ctx);
+    println!("{:?}", text_to_tokens(&mut ctx));
 }
 
 #[cfg(test)]
@@ -95,12 +89,27 @@ mod main_tests {
     use super::*;
 
     #[test]
-    fn text_context_creation() {
+    fn test_context_creation() {
         let text = "empty".to_string();
         let ctx = create_context(text.clone(), "telugu".to_string(), "devanagari".to_string());
 
         assert_eq!(ctx.input, Some(types::ScriptName::Telugu));
         assert_eq!(ctx.output, Some(types::ScriptName::Devanagari));
+        assert_eq!(ctx.text, text);
+    }
+
+    #[test]
+    fn test_tokenizer() {
+        let text = "इ॒षे त्वो॒र्जे".to_string();
+        let mut ctx = create_context(
+            text.clone(),
+            "devanagari".to_string(),
+            "iast_iso".to_string(),
+        );
+
+        text_to_tokens(&mut ctx);
+        assert_eq!(ctx.input, Some(types::ScriptName::Devanagari));
+        assert_eq!(ctx.output, Some(types::ScriptName::IastIso));
         assert_eq!(ctx.text, text);
     }
 }

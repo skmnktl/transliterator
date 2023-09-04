@@ -10,7 +10,7 @@ use crate::types::{RawScriptMap, ScriptMap, ScriptName, Token};
 use std::collections::HashMap;
 use toml;
 
-pub static CHAR_GROUPS: [&str; 8] = [
+pub static CHAR_GROUPS: [&str; 9] = [
     "vowels",
     "vowel_marks",
     "consonants",
@@ -19,6 +19,7 @@ pub static CHAR_GROUPS: [&str; 8] = [
     "candra",
     "symbols",
     "placeholders",
+    "accents",
 ];
 
 pub fn read_script(which: &ScriptName) -> RawScriptMap {
@@ -143,7 +144,7 @@ pub fn deva_to_enum(input: String) -> Token {
         "ः" => Token::H,
         "्" => Token::viraama,
         "॑" => Token::svarita,
-        "॒" => Token::anudaatta,
+        "\u{952}" => Token::anudaatta,
         "।" => Token::danda,
         "॥" => Token::dvidanda,
         " " => Token::whitespace,
