@@ -111,6 +111,13 @@ impl Token {
         }
         return false;
     }
+
+    pub fn is_accent(&self) -> bool {
+        if (*self >= Token::anudaatta && *self <= Token::gg) {
+            return true;
+        }
+        return false;
+    }
 }
 
 #[derive(PartialEq, PartialOrd, Debug, Clone, Copy)]
@@ -167,5 +174,15 @@ mod tests {
     #[test]
     fn test_not_viraama() {
         assert_eq!(Token::a.is_viraama(), false);
+    }
+
+    #[test]
+    fn test_accent() {
+        assert_eq!(Token::udaatta.is_viraama(), true);
+    }
+
+    #[test]
+    fn test_not_accent() {
+        assert_eq!(Token::a.is_accent(), false);
     }
 }
