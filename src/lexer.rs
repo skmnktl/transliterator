@@ -154,7 +154,7 @@ pub fn deva_to_enum(input: String) -> Token {
 }
 
 pub fn enum_to_deva(token: Token) -> String {
-    let value = match token {
+    match token {
         Token::a => "अ",
         Token::A => "आ",
         Token::i => "इ",
@@ -231,11 +231,9 @@ pub fn enum_to_deva(token: Token) -> String {
         Token::newline => "\n",
         Token::unk => " _unk_ ",
         _ => " _unk_ ",
-    };
-
-    value.to_string()
+    }
+    .to_string()
 }
-
 #[cfg(test)]
 mod tests {
     use super::*;

@@ -91,7 +91,7 @@ pub fn tokens_to_text(ctx: &mut TransliterationContext) {
         let mut group_name = "vowels";
         if start && prev == Token::whitespace && token.is_vowel() {
             group_name = "vowels";
-        } else if prev != Token::whitespace && token.is_vowel() {
+        } else if token.is_vowel() {
             group_name = "vowels_marks";
         } else if token.is_consonant() {
             group_name = "consonants";
@@ -131,15 +131,7 @@ fn main() {
     text_to_tokens(&mut ctx);
     tokens_to_text(&mut ctx);
 
-    let mut f = fs::OpenOptions::new()
-        .write(true)
-        .append(true)
-        .open("foo.txt")
-        .unwrap();
-
-    write!(f, "{}", ctx.transliterated).unwrap();
-    write!(f, "{}", "\n".to_string()).unwrap();
-    write!(f, "{}", ctx.text).unwrap();
+    println!("{}", ctx.transliterated);
 }
 
 #[cfg(test)]
