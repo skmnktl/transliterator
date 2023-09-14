@@ -131,7 +131,8 @@ fn main() {
     text_to_tokens(&mut ctx);
     tokens_to_text(&mut ctx);
 
-    println!("{}", ctx.transliterated);
+    println!("TOKENS {:?}", ctx.tokenized);
+    println!("RESULT {}", ctx.transliterated);
 }
 
 #[cfg(test)]
