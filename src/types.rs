@@ -41,7 +41,7 @@ pub enum Token {
     gm,
     gg,
     //virama
-    viraama = 400,
+    virama = 400,
     // Consonants
     k = 500,
     kh,
@@ -105,8 +105,8 @@ impl Token {
         return false;
     }
 
-    pub fn is_viraama(&self) -> bool {
-        if (*self == Token::viraama) {
+    pub fn is_virama(&self) -> bool {
+        if (*self == Token::virama) {
             return true;
         }
         return false;
@@ -128,6 +128,15 @@ pub enum ScriptName {
     Telugu,
     // All roman scripts are in the 100 group
     IastIso = 100,
+}
+
+impl ScriptName {
+    pub fn is_roman(&self) -> bool {
+        if *self >= ScriptName::IastIso {
+            return true;
+        }
+        false
+    }
 }
 
 pub type RawScriptMap = HashMap<String, HashMap<String, toml::Value>>;

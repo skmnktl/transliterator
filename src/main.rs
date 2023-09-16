@@ -9,6 +9,8 @@ use std::fs;
 use std::io::prelude::*;
 use types::Token;
 
+use crate::lexer::map_vowel_marks;
+
 mod lexer;
 mod scanner;
 //todo!("Bring the types into the outer scope. It's annoying to type \'types\'.");
@@ -57,21 +59,12 @@ pub fn text_to_tokens(ctx: &mut TransliterationContext) {
             if map_to_deva.get(group_name).unwrap().contains_key(i) {
                 let replacement = map_to_deva.get(group_name).unwrap().get(i).unwrap();
                 let token = deva_to_enum(replacement.to_string());
-                if tokenized.len() > 0
-                    && ((token.is_viraama() && tokenized.last().unwrap().is_vowel())
-                        || (token.is_vowel() && tokenized.last().unwrap().is_vowel()))
-                {
-                    tokenized.pop();
-                    tokenized.push(token);
-                    break;
-                }
-                if token.is_consonant() {
-                    tokenized.push(token);
-                    tokenized.push(types::Token::a);
-                    break;
+                if tokenized.last() != None {
+                    if token.is_vowel() && tokenized.last().unwrap().is_consonant() {
+                        tokenized.push(Token::virama);
+                    }
                 }
                 tokenized.push(token);
-                break;
             }
         }
     }
@@ -79,29 +72,36 @@ pub fn text_to_tokens(ctx: &mut TransliterationContext) {
 }
 
 pub fn tokens_to_text(ctx: &mut TransliterationContext) {
+    let roman = ctx.output.unwrap().is_roman();
+
     let map_to_output =
         lexer::produce_scriptmap(&mut lexer::read_script(&ctx.output.unwrap()), false);
-    let mut prev: Token = Token::viraama;
-    let mut start = false;
+    let mut prev: Token = Token::virama;
+    let mut start = true;
     let tokens = ctx.tokenized.clone().unwrap();
     println!("{:?}", map_to_output);
     for tok in tokens.iter() {
         let token = *tok;
-        let c = enum_to_deva(token);
+        let mut c = enum_to_deva(token);
         let mut group_name = "vowels";
-        if start && prev == Token::whitespace && token.is_vowel() {
-            group_name = "vowels";
-        } else if token.is_vowel() {
-            group_name = "vowels_marks";
+        if token.is_vowel() && !start {
+            group_name = "vowel_marks";
         } else if token.is_consonant() {
             group_name = "consonants";
-        } else if token.is_viraama() {
-            group_name = "viraama";
+        } else if token.is_virama() {
+            group_name = "virama";
         } else if token.is_accent() {
             group_name = "accents";
+        } else if token == Token::whitespace || token == Token::newline {
+            ctx.transliterated.push_str(&c);
+            continue;
         }
 
-        let group = match map_to_output.get(group_name) {
+        if group_name == "vowel_marks" {
+            c = map_vowel_marks(token);
+        }
+
+        let mut group = match map_to_output.get(group_name) {
             Some(x) => x.get(&c),
             None => None,
         };
@@ -109,25 +109,27 @@ pub fn tokens_to_text(ctx: &mut TransliterationContext) {
             Some(x) => x,
             None => &c,
         };
-
         println!("{} {:?} {} {}", group_name, token, c, push);
 
-        if prev.is_consonant() && token.is_vowel() {
-            ctx.transliterated
-                .push_str(map_to_output.get("virama").unwrap().get("\u{94d}").unwrap());
+        if token.is_vowel() && !start {
+            ctx.transliterated.pop();
         }
         ctx.transliterated.push_str(push);
         prev = token.clone();
-        start = true;
+        start = false;
     }
 }
 
 fn main() {
-    let mut ctx = create_context(
-        "इ॒षे त्वो॒र्जे".to_string(),
-        "devanagari".to_string(),
-        "telugu".to_string(),
-    );
+    let txt = "इ॒षे त्वो॒र्जे".to_string();
+    /*let txt = "अश्म॒न्नूर्जं॒ पर्व॑ते शिश्रिया॒णां वाते॑ प॒र्जन्ये॒ वरु॑णस्य॒ शुष्मे᳚ ।
+       अ॒द्भ्य ओष॑धीभ्यो॒ वन॒स्पति॒भ्योऽधि॒ संभृ॑तां॒ तां न॒ इष॒मूर्जं॑
+       धत्त मरुतः सꣳ ररा॒णाः ॥ अश्मग्ग्॑स्ते॒ क्षुद॒मुं ते॒ शुगृ॑च्छतु॒
+       यं द्वि॒ष्मः ॥ स॒मु॒द्रस्य॑ त्वा॒ऽवाक॒याग्ने॒ परि॑ व्ययामसि । पा॒व॒को
+       अ॒स्मभ्यꣳ॑ शि॒वो भ॑व ॥ हि॒मस्य॑ त्वा ज॒रायु॒णाग्ने॒ परि॑ व्ययामसि ।
+       पा॒व॒को अ॒स्मभ्यꣳ॑ शि॒वो भ॑व ॥".to_string();
+    */
+    let mut ctx = create_context(txt, "devanagari".to_string(), "telugu".to_string());
     text_to_tokens(&mut ctx);
     tokens_to_text(&mut ctx);
 

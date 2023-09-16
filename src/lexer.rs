@@ -142,7 +142,7 @@ pub fn deva_to_enum(input: String) -> Token {
         "ँ" => Token::cbindu,
         "ं" => Token::M,
         "ः" => Token::H,
-        "्" => Token::viraama,
+        "्" => Token::virama,
         "॑" => Token::svarita,
         "\u{952}" => Token::anudaatta,
         "।" => Token::danda,
@@ -222,7 +222,7 @@ pub fn enum_to_deva(token: Token) -> String {
         Token::cbindu => "ँ",
         Token::M => "ं",
         Token::H => "ः",
-        Token::viraama => "्",
+        Token::virama => "्",
         Token::svarita => "॑",
         Token::anudaatta => "॒",
         Token::danda => "।",
@@ -234,6 +234,30 @@ pub fn enum_to_deva(token: Token) -> String {
     }
     .to_string()
 }
+
+pub fn map_vowel_marks(token: Token) -> String {
+    match token {
+        Token::a => "",
+        Token::A => "ा",
+        Token::i => "ि",
+        Token::I => "ी",
+        Token::u => "ु",
+        Token::U => "ू",
+        Token::RRi => "ृ",
+        Token::RRI => "ॄ",
+        Token::LLi => "ॢ",
+        Token::LLI => "ॣ",
+        Token::e => "ॆ",
+        Token::E => "े",
+        Token::ai => "ै",
+        Token::o => "ॊ",
+        Token::O => "ो",
+        Token::au => "ौ",
+        _ => "_unk ",
+    }
+    .to_string()
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
