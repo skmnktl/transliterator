@@ -101,7 +101,7 @@ pub fn tokens_to_text(ctx: &mut TransliterationContext) {
             c = map_vowel_marks(token);
         }
 
-        let mut group = match map_to_output.get(group_name) {
+        let group = match map_to_output.get(group_name) {
             Some(x) => x.get(&c),
             None => None,
         };
@@ -110,6 +110,11 @@ pub fn tokens_to_text(ctx: &mut TransliterationContext) {
             None => &c,
         };
         println!("{} {:?} {} {}", group_name, token, c, push);
+
+        if !start && roman && prev.is_consonant() && !token.is_virama() {
+            ctx.transliterated
+                .push_str(map_to_output.get("vowels").unwrap().get("अ").unwrap());
+        }
 
         if token.is_vowel() && !start {
             ctx.transliterated.pop();
@@ -122,14 +127,15 @@ pub fn tokens_to_text(ctx: &mut TransliterationContext) {
 
 fn main() {
     let txt = "इ॒षे त्वो॒र्जे".to_string();
-    /*let txt = "अश्म॒न्नूर्जं॒ पर्व॑ते शिश्रिया॒णां वाते॑ प॒र्जन्ये॒ वरु॑णस्य॒ शुष्मे᳚ ।
+    let txt = "अश्म॒न्नूर्जं॒ पर्व॑ते शिश्रिया॒णां वाते॑ प॒र्जन्ये॒ वरु॑णस्य॒ शुष्मे᳚ ।
        अ॒द्भ्य ओष॑धीभ्यो॒ वन॒स्पति॒भ्योऽधि॒ संभृ॑तां॒ तां न॒ इष॒मूर्जं॑
        धत्त मरुतः सꣳ ररा॒णाः ॥ अश्मग्ग्॑स्ते॒ क्षुद॒मुं ते॒ शुगृ॑च्छतु॒
        यं द्वि॒ष्मः ॥ स॒मु॒द्रस्य॑ त्वा॒ऽवाक॒याग्ने॒ परि॑ व्ययामसि । पा॒व॒को
        अ॒स्मभ्यꣳ॑ शि॒वो भ॑व ॥ हि॒मस्य॑ त्वा ज॒रायु॒णाग्ने॒ परि॑ व्ययामसि ।
-       पा॒व॒को अ॒स्मभ्यꣳ॑ शि॒वो भ॑व ॥".to_string();
-    */
-    let mut ctx = create_context(txt, "devanagari".to_string(), "telugu".to_string());
+       पा॒व॒को अ॒स्मभ्यꣳ॑ शि॒वो भ॑व ॥"
+        .to_string();
+
+    let mut ctx = create_context(txt, "devanagari".to_string(), "iast_iso".to_string());
     text_to_tokens(&mut ctx);
     tokens_to_text(&mut ctx);
 
