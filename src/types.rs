@@ -176,18 +176,18 @@ mod tests {
     }
 
     #[test]
-    fn test_viraama() {
-        assert_eq!(Token::viraama.is_viraama(), true);
+    fn test_virama() {
+        assert_eq!(Token::virama.is_virama(), true);
     }
 
     #[test]
-    fn test_not_viraama() {
-        assert_eq!(Token::a.is_viraama(), false);
+    fn test_not_virama() {
+        assert_eq!(Token::a.is_virama(), false);
     }
 
     #[test]
     fn test_accent() {
-        assert_eq!(Token::udaatta.is_viraama(), true);
+        assert_eq!(Token::udaatta.is_accent(), true);
     }
 
     #[test]

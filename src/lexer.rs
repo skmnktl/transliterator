@@ -158,7 +158,7 @@ pub fn enum_to_deva(token: Token) -> String {
         Token::a => "अ",
         Token::A => "आ",
         Token::i => "इ",
-        Token::I => "ई",
+        Token::I => "ई",    
         Token::u => "उ",
         Token::U => "ऊ",
         Token::RRi => "ऋ",

@@ -17,117 +17,46 @@ mod scanner;
 mod types;
 
 #[derive(Debug)]
-pub struct TransliterationContext {
-    input: Option<types::ScriptName>,
-    output: Option<types::ScriptName>,
-    text: String,
-    tokenized: Option<Vec<types::Token>>,
-    transliterated: String,
+pub struct Context {
+    input: types::ScriptName,
+    output: types::ScriptName,
 }
 
-fn generate_scriptname(value: String) -> Option<types::ScriptName> {
+impl Context {
+    fn new(input: String, output: String) -> Self {
+        Self {
+            input: generate_scriptname(input),
+            output: generate_scriptname(output),
+        }
+    }
+}
+
+fn generate_scriptname(value: String) -> types::ScriptName {
     match value.as_str() {
-        "devanagari" => Some(types::ScriptName::Devanagari),
-        "telugu" => Some(types::ScriptName::Telugu),
-        "iast_iso" => Some(types::ScriptName::IastIso),
-        _ => None,
+        "devanagari" => types::ScriptName::Devanagari,
+        "telugu" => types::ScriptName::Telugu,
+        "iast_iso" => types::ScriptName::IastIso,
+        _ => panic!("Unknown value: {value}"),
     }
 }
 
-fn create_context(text: String, input: String, output: String) -> TransliterationContext {
-    let mut context = TransliterationContext {
-        text: text,
-        input: generate_scriptname(input),
-        output: generate_scriptname(output),
-        tokenized: None,
-        transliterated: "".to_string(),
-    };
-    context
+fn create_context(text: String, input: String, output: String) -> Context {
+    Context::new(input, output)
 }
 
-pub fn text_to_tokens(ctx: &mut TransliterationContext) {
-    let text_vector: Vec<String>;
-    if ctx.input.unwrap() < types::ScriptName::IastIso {
-        text_vector = indic_to_chars(ctx.text.clone());
-    } else {
-        text_vector = roman_to_graphemes(ctx.text.clone());
+fn text_to_tokens(text: &str, ctx: Context) -> Vec<Token> {
+    for c in text.chars(){
+        
     }
-    let map_to_deva = lexer::produce_scriptmap(&mut lexer::read_script(&ctx.input.unwrap()), true);
-    let mut tokenized: Vec<types::Token> = vec![];
-    for i in text_vector.iter() {
-        for group_name in lexer::CHAR_GROUPS {
-            if map_to_deva.get(group_name).unwrap().contains_key(i) {
-                let replacement = map_to_deva.get(group_name).unwrap().get(i).unwrap();
-                let token = deva_to_enum(replacement.to_string());
-                if tokenized.last() != None {
-                    if token.is_vowel() && tokenized.last().unwrap().is_consonant() {
-                        tokenized.push(Token::virama);
-                    }
-                }
-                tokenized.push(token);
-            }
-        }
-    }
-    ctx.tokenized = Some(tokenized);
+    vec![]
 }
 
-pub fn tokens_to_text(ctx: &mut TransliterationContext) {
-    let roman = ctx.output.unwrap().is_roman();
+fn tokens_to_output(ctx: Context, tokens: &Vec<Token>) {
 
-    let map_to_output =
-        lexer::produce_scriptmap(&mut lexer::read_script(&ctx.output.unwrap()), false);
-    let mut prev: Token = Token::virama;
-    let mut start = true;
-    let tokens = ctx.tokenized.clone().unwrap();
-    println!("{:?}", map_to_output);
-    for tok in tokens.iter() {
-        let token = *tok;
-        let mut c = enum_to_deva(token);
-        let mut group_name = "vowels";
-        if token.is_vowel() && !start {
-            group_name = "vowel_marks";
-        } else if token.is_consonant() {
-            group_name = "consonants";
-        } else if token.is_virama() {
-            group_name = "virama";
-        } else if token.is_accent() {
-            group_name = "accents";
-        } else if token == Token::whitespace || token == Token::newline {
-            ctx.transliterated.push_str(&c);
-            continue;
-        }
-
-        if group_name == "vowel_marks" {
-            c = map_vowel_marks(token);
-        }
-
-        let group = match map_to_output.get(group_name) {
-            Some(x) => x.get(&c),
-            None => None,
-        };
-        let push = match group {
-            Some(x) => x,
-            None => &c,
-        };
-        println!("{} {:?} {} {}", group_name, token, c, push);
-
-        if !start && roman && prev.is_consonant() && !token.is_virama() {
-            ctx.transliterated
-                .push_str(map_to_output.get("vowels").unwrap().get("अ").unwrap());
-        }
-
-        if token.is_vowel() && !start {
-            ctx.transliterated.pop();
-        }
-        ctx.transliterated.push_str(push);
-        prev = token.clone();
-        start = false;
-    }
 }
 
 fn main() {
-    let txt = "इ॒षे त्वो॒र्जे".to_string();
-    let txt = "अश्म॒न्नूर्जं॒ पर्व॑ते शिश्रिया॒णां वाते॑ प॒र्जन्ये॒ वरु॑णस्य॒ शुष्मे᳚ ।
+    let text = "अश्म॒न्नूर्जं॒ पर्व॑ते शिश्रिया॒णां वाते॑ प॒र्जन्ये॒ वरु॑णस्य॒ शुष्मे᳚ ।
        अ॒द्भ्य ओष॑धीभ्यो॒ वन॒स्पति॒भ्योऽधि॒ संभृ॑तां॒ तां न॒ इष॒मूर्जं॑
        धत्त मरुतः सꣳ ररा॒णाः ॥ अश्मग्ग्॑स्ते॒ क्षुद॒मुं ते॒ शुगृ॑च्छतु॒
        यं द्वि॒ष्मः ॥ स॒मु॒द्रस्य॑ त्वा॒ऽवाक॒याग्ने॒ परि॑ व्ययामसि । पा॒व॒को
@@ -135,12 +64,11 @@ fn main() {
        पा॒व॒को अ॒स्मभ्यꣳ॑ शि॒वो भ॑व ॥"
         .to_string();
 
-    let mut ctx = create_context(txt, "devanagari".to_string(), "iast_iso".to_string());
-    text_to_tokens(&mut ctx);
-    tokens_to_text(&mut ctx);
+    let mut ctx = Context::new("devanagari".to_string(), "iast_iso".to_string());
+    let mut tokens: Vec<types::Token>  = vec![];
+    //text_to_tokens(&mut ctx, &mut tokens);
+    //tokens_to_text(&mut ctx);
 
-    println!("TOKENS {:?}", ctx.tokenized);
-    println!("RESULT {}", ctx.transliterated);
 }
 
 #[cfg(test)]
@@ -148,27 +76,21 @@ mod main_tests {
     use super::*;
 
     #[test]
-    fn test_context_creation() {
-        let text = "empty".to_string();
-        let ctx = create_context(text.clone(), "telugu".to_string(), "devanagari".to_string());
-
-        assert_eq!(ctx.input, Some(types::ScriptName::Telugu));
-        assert_eq!(ctx.output, Some(types::ScriptName::Devanagari));
-        assert_eq!(ctx.text, text);
+    fn test_context_new() {
+        let ctx = Context::new("telugu".to_string(), "devanagari".to_string());
+        assert_eq!(ctx.input, types::ScriptName::Telugu);
+        assert_eq!(ctx.output, types::ScriptName::Devanagari);
     }
 
     #[test]
     fn test_tokenizer() {
         let text = "इ॒षे त्वो॒र्जे".to_string();
-        let mut ctx = create_context(
-            text.clone(),
+        let mut ctx = Context::new(
             "devanagari".to_string(),
             "iast_iso".to_string(),
         );
 
-        text_to_tokens(&mut ctx);
-        assert_eq!(ctx.input, Some(types::ScriptName::Devanagari));
-        assert_eq!(ctx.output, Some(types::ScriptName::IastIso));
-        assert_eq!(ctx.text, text);
+        assert_eq!(ctx.input, types::ScriptName::Devanagari);
+        assert_eq!(ctx.output, types::ScriptName::IastIso);
     }
 }
