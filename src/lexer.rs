@@ -6,11 +6,11 @@
  * The second step then maps devanagari to our tokens.
  */
 
-use crate::types::{RawScriptMap, ScriptMap, ScriptName, Token};
+use crate::types::{RawScriptMap, Script, ScriptMap, Token};
 use std::collections::HashMap;
 use toml;
 
-pub static CHAR_GROUPS: [&str; 9] = [
+const TOKEN_TYPES: &[&str] = &[
     "vowels",
     "vowel_marks",
     "consonants",
@@ -18,56 +18,55 @@ pub static CHAR_GROUPS: [&str; 9] = [
     "virama",
     "candra",
     "symbols",
-    "placeholders",
     "accents",
 ];
 
-pub fn read_script(which: &ScriptName) -> RawScriptMap {
-    let script = match *which {
-        ScriptName::Telugu => include_str!("../maps/brahmic/telugu.toml"),
-        ScriptName::IastIso => include_str!("../maps/roman/iast_iso_m.toml"),
-        ScriptName::Devanagari => include_str!("../maps/brahmic/devanagari.toml"),
+pub fn read_script(which: Script) -> RawScriptMap {
+    let script = match which {
+        Script::Telugu => include_str!("../maps/brahmic/telugu.toml"),
+        Script::IastIso => include_str!("../maps/roman/iast_iso_m.toml"),
+        Script::Devanagari => include_str!("../maps/brahmic/devanagari.toml"),
     };
-    let mut script: RawScriptMap = toml::from_str(script).unwrap();
-    script
+    toml::from_str(script).unwrap()
 }
 
 pub fn produce_scriptmap_group(
-    script: &mut RawScriptMap,
+    script: &RawScriptMap,
     group_name: String,
     invert: bool,
 ) -> HashMap<String, String> {
-    if group_name == "placeholders".to_string() {
-        return HashMap::from([
-            (" ".to_string(), " ".to_string()),
-            ("\n".to_string(), "\n".to_string()),
-        ]);
-    }
     let group = match script.get(&group_name) {
         Some(x) => x.clone(),
-        None => HashMap::from([]),
+        None => HashMap::new(),
     };
-    let mut map: HashMap<String, String> = HashMap::from([]);
 
-    for k in group.keys() {
-        let v = group.get(k).clone().unwrap().to_string();
-        let v = v.replace(&['\"'], "");
+    let mut map = HashMap::new();
+    for (key, value) in group.iter() {
+        let value = value.to_string().replace(&['\"'], "");
         if invert {
-            map.insert(v, k.clone());
+            map.insert(value, key.clone());
         } else {
-            map.insert(k.clone(), v);
+            map.insert(key.clone(), value);
         }
     }
 
     map
 }
 
-pub fn produce_scriptmap(script: &mut RawScriptMap, invert: bool) -> ScriptMap {
+pub fn produce_scriptmap(script: &RawScriptMap, invert: bool) -> ScriptMap {
     let mut groups: ScriptMap = HashMap::from([]);
-    for group_name in CHAR_GROUPS {
+    for token_type in TOKEN_TYPES {
+        let scriptmap_group = produce_scriptmap_group(script, token_type.to_string(), invert);
+        if !scriptmap_group.is_empty() {
         groups.insert(
-            group_name.to_string(),
-            produce_scriptmap_group(script, group_name.to_string(), invert),
+            token_type.to_string(), scriptmap_group
+        );
+    }
+    }
+    if !groups.contains_key("vowel_marks") {
+        groups.insert(
+            "vowel_marks".to_string(),
+            groups.get("vowels").unwrap().clone()
         );
     }
     groups
@@ -124,22 +123,22 @@ pub fn deva_to_enum(input: String) -> Token {
         "ष" => Token::Sh,
         "स" => Token::s,
         "ह" => Token::h,
-        "ा" => Token::A,
-        "ि" => Token::i,
-        "ी" => Token::I,
-        "ु" => Token::u,
-        "ू" => Token::U,
-        "ृ" => Token::RRi,
-        "ॄ" => Token::RRI,
-        "ॢ" => Token::LLi,
-        "ॣ" => Token::LLI,
-        "ॆ" => Token::e,
-        "े" => Token::E,
-        "ै" => Token::ai,
-        "ॊ" => Token::o,
-        "ो" => Token::O,
-        "ौ" => Token::au,
-        "ँ" => Token::cbindu,
+        "ा" => Token::vm_A,
+        "ि" => Token::vm_i,
+        "ी" => Token::vm_I,
+        "ु" => Token::vm_u,
+        "ू" => Token::vm_U,
+        "ृ" => Token::vm_RRi,
+        "ॄ" => Token::vm_RRI,
+        "ॢ" => Token::vm_LLi,
+        "ॣ" => Token::vm_LLI,
+        "ॆ" => Token::vm_e,
+        "े" => Token::vm_E,
+        "ै" => Token::vm_ai,
+        "ॊ" => Token::vm_o,
+        "ो" => Token::vm_O,
+        "ौ" => Token::vm_au,
+        "ँ" => Token::cbindu__y,
         "ं" => Token::M,
         "ः" => Token::H,
         "्" => Token::virama,
@@ -147,18 +146,22 @@ pub fn deva_to_enum(input: String) -> Token {
         "\u{952}" => Token::anudaatta,
         "।" => Token::danda,
         "॥" => Token::dvidanda,
-        " " => Token::whitespace,
-        "\n" => Token::newline,
-        _ => Token::unk,
+        _ => Token::Unknown(input),
     }
 }
 
-pub fn enum_to_deva(token: Token) -> String {
+impl Token {
+    pub fn to_devanagari(&self) -> String {
+        enum_to_deva(self)
+    }
+}
+
+fn enum_to_deva(token: &Token) -> String {
     match token {
         Token::a => "अ",
         Token::A => "आ",
         Token::i => "इ",
-        Token::I => "ई",    
+        Token::I => "ई",
         Token::u => "उ",
         Token::U => "ऊ",
         Token::RRi => "ऋ",
@@ -204,22 +207,22 @@ pub fn enum_to_deva(token: Token) -> String {
         Token::Sh => "ष",
         Token::s => "स",
         Token::h => "ह",
-        Token::A => "ा",
-        Token::i => "ि",
-        Token::I => "ी",
-        Token::u => "ु",
-        Token::U => "ू",
-        Token::RRi => "ृ",
-        Token::RRI => "ॄ",
-        Token::LLi => "ॢ",
-        Token::LLI => "ॣ",
-        Token::e => "ॆ",
-        Token::E => "े",
-        Token::ai => "ै",
-        Token::o => "ॊ",
-        Token::O => "ो",
-        Token::au => "ौ",
-        Token::cbindu => "ँ",
+        Token::vm_A => "ा",
+        Token::vm_i => "ि",
+        Token::vm_I => "ी",
+        Token::vm_u => "ु",
+        Token::vm_U => "ू",
+        Token::vm_RRi => "ृ",
+        Token::vm_RRI => "ॄ",
+        Token::vm_LLi => "ॢ",
+        Token::vm_LLI => "ॣ",
+        Token::vm_e => "ॆ",
+        Token::vm_E => "े",
+        Token::vm_ai => "ै",
+        Token::vm_o => "ॊ",
+        Token::vm_O => "ो",
+        Token::vm_au => "ौ",
+        Token::cbindu__y => "ँ",
         Token::M => "ं",
         Token::H => "ः",
         Token::virama => "्",
@@ -227,33 +230,7 @@ pub fn enum_to_deva(token: Token) -> String {
         Token::anudaatta => "॒",
         Token::danda => "।",
         Token::dvidanda => "॥",
-        Token::whitespace => " ",
-        Token::newline => "\n",
-        Token::unk => " _unk_ ",
         _ => " _unk_ ",
-    }
-    .to_string()
-}
-
-pub fn map_vowel_marks(token: Token) -> String {
-    match token {
-        Token::a => "",
-        Token::A => "ा",
-        Token::i => "ि",
-        Token::I => "ी",
-        Token::u => "ु",
-        Token::U => "ू",
-        Token::RRi => "ृ",
-        Token::RRI => "ॄ",
-        Token::LLi => "ॢ",
-        Token::LLI => "ॣ",
-        Token::e => "ॆ",
-        Token::E => "े",
-        Token::ai => "ै",
-        Token::o => "ॊ",
-        Token::O => "ो",
-        Token::au => "ौ",
-        _ => "_unk ",
     }
     .to_string()
 }
@@ -263,7 +240,7 @@ mod tests {
     use super::*;
 
     fn map_search(search: &str, group: &str, result: &str) {
-        let script = read_script(&ScriptName::Devanagari);
+        let script = read_script(Script::Devanagari);
         let group = match script.get(group) {
             Some(x) => x,
             _ => panic!("Issue loading vowels from devanagari script."),
@@ -285,7 +262,7 @@ mod tests {
 
     #[test]
     fn test_scriptmap_group_inversion() {
-        let mut script = read_script(&ScriptName::Telugu);
+        let mut script = read_script(Script::Telugu);
         let inverted = produce_scriptmap_group(&mut script, "vowels".to_string(), true);
         println!("{:?}", inverted);
         assert_eq!(inverted.get("అ").unwrap(), "अ");
@@ -293,7 +270,7 @@ mod tests {
 
     #[test]
     fn test_produce_scriptmap() {
-        let mut script = read_script(&ScriptName::Telugu);
+        let mut script = read_script(Script::Telugu);
         let map = produce_scriptmap(&mut script, false);
         println!("{:?}", map);
         assert_eq!(map.get("vowels").unwrap().get("अ").unwrap(), "అ");
@@ -308,8 +285,8 @@ mod tests {
 
     #[test]
     fn test_enum_to_deva() {
-        for i in vec![(Token::a, "अ"), (Token::k, "क")].iter() {
-            assert_eq!(enum_to_deva(i.0.clone()), i.1.to_string());
+        for (token, deva) in vec![(Token::a, "अ"), (Token::k, "क")].iter() {
+            assert_eq!(token.to_devanagari(), deva.to_string());
         }
     }
 }

@@ -3,23 +3,33 @@
 
 */
 
-use lexer::{deva_to_enum, enum_to_deva, read_script};
-use scanner::{indic_to_chars, roman_to_graphemes};
-use std::fs;
-use std::io::prelude::*;
-use types::Token;
-
-use crate::lexer::map_vowel_marks;
-
 mod lexer;
 mod scanner;
-//todo!("Bring the types into the outer scope. It's annoying to type \'types\'.");
 mod types;
+
+use lexer::{deva_to_enum, produce_scriptmap, read_script};
+use types::Script;
+use types::Token;
 
 #[derive(Debug)]
 pub struct Context {
-    input: types::ScriptName,
-    output: types::ScriptName,
+    input: Script,
+    output: Script,
+}
+
+
+pub struct Transliterator {
+    context_a: bool,
+    context_b: bool,
+}
+
+impl Transliterator {
+    pub fn new(context_a: bool, context_b: bool) -> Self {
+        Self { context_a, context_b }
+    }
+    pub fn transliterate(&self, text: &str, input: Script, output: Script) -> String {
+        "".to_string()
+    }
 }
 
 impl Context {
@@ -31,44 +41,68 @@ impl Context {
     }
 }
 
-fn generate_scriptname(value: String) -> types::ScriptName {
-    match value.as_str() {
-        "devanagari" => types::ScriptName::Devanagari,
-        "telugu" => types::ScriptName::Telugu,
-        "iast_iso" => types::ScriptName::IastIso,
+fn generate_scriptname(value: String) -> Script {
+    match value.parse() {
+        Ok(script) => script,
         _ => panic!("Unknown value: {value}"),
     }
 }
 
-fn create_context(text: String, input: String, output: String) -> Context {
-    Context::new(input, output)
-}
+fn tokenize(text: &str, ctx: &Context) -> Vec<Token> {
+    let mut raw_mapping = read_script(ctx.input);
+    let mapping = produce_scriptmap(&mut raw_mapping, true);
+    let mut tokens: Vec<Token> = vec![];
 
-fn text_to_tokens(text: &str, ctx: Context) -> Vec<Token> {
-    for c in text.chars(){
-        
+    for c in text.chars() {
+        for char_category in mapping.values() {
+            let char_key = c.to_string();
+            if let Some(value) = char_category.get(&char_key) {
+                let t = deva_to_enum(value.to_string());
+                
+                if t.is_vowel_mark() | t.is_virama(){
+                    tokens.pop();
+                    tokens.push(t);
+                } else if t.is_consonant(){
+                    tokens.push(t);
+                    tokens.push(Token::vm_a)
+                } else{
+                    tokens.push(t);
+                }
+
+                break;
+            }
+        }
     }
-    vec![]
+
+    tokens
 }
 
-fn tokens_to_output(ctx: Context, tokens: &Vec<Token>) {
-
+fn render(ctx: &Context, tokens: &Vec<Token>) -> String {
+    let mut output = String::new();
+    let raw_mapping = read_script(ctx.output);
+    let mapping = produce_scriptmap(&raw_mapping, false);
+    println!("{:?}", mapping);
+    for token in tokens.iter() {
+        let char_key = token.to_devanagari();
+        for char_category in mapping.values() {
+            if let Some(value) = char_category.get(&char_key) {
+                output += value;
+                break;
+            }
+        }
+    }
+    output
 }
 
 fn main() {
-    let text = "अश्म॒न्नूर्जं॒ पर्व॑ते शिश्रिया॒णां वाते॑ प॒र्जन्ये॒ वरु॑णस्य॒ शुष्मे᳚ ।
-       अ॒द्भ्य ओष॑धीभ्यो॒ वन॒स्पति॒भ्योऽधि॒ संभृ॑तां॒ तां न॒ इष॒मूर्जं॑
-       धत्त मरुतः सꣳ ररा॒णाः ॥ अश्मग्ग्॑स्ते॒ क्षुद॒मुं ते॒ शुगृ॑च्छतु॒
-       यं द्वि॒ष्मः ॥ स॒मु॒द्रस्य॑ त्वा॒ऽवाक॒याग्ने॒ परि॑ व्ययामसि । पा॒व॒को
-       अ॒स्मभ्यꣳ॑ शि॒वो भ॑व ॥ हि॒मस्य॑ त्वा ज॒रायु॒णाग्ने॒ परि॑ व्ययामसि ।
-       पा॒व॒को अ॒स्मभ्यꣳ॑ शि॒वो भ॑व ॥"
+    let text = "अश्म॒न्नूर्जं॒ पर्व॑ते "
         .to_string();
 
-    let mut ctx = Context::new("devanagari".to_string(), "iast_iso".to_string());
-    let mut tokens: Vec<types::Token>  = vec![];
-    //text_to_tokens(&mut ctx, &mut tokens);
-    //tokens_to_text(&mut ctx);
-
+    let ctx = Context::new("devanagari".to_string(), "iast_iso".to_string());
+    let tokens = tokenize(&text, &ctx);
+    println!("TOKENS {:?}", tokens);
+    let output = render(&ctx, &tokens);
+    println!("OUTPUT {}", output);
 }
 
 #[cfg(test)]
@@ -78,19 +112,60 @@ mod main_tests {
     #[test]
     fn test_context_new() {
         let ctx = Context::new("telugu".to_string(), "devanagari".to_string());
-        assert_eq!(ctx.input, types::ScriptName::Telugu);
-        assert_eq!(ctx.output, types::ScriptName::Devanagari);
+        assert_eq!(ctx.input, Script::Telugu);
+        assert_eq!(ctx.output, Script::Devanagari);
     }
 
     #[test]
-    fn test_tokenizer() {
-        let text = "इ॒षे त्वो॒र्जे".to_string();
-        let mut ctx = Context::new(
-            "devanagari".to_string(),
-            "iast_iso".to_string(),
-        );
+    fn test_tokenizer_deva() {
+        use Token::*;
+        let text = "इ॒षे त्वो॒र्जे";
+        let ctx = Context::new("devanagari".to_string(), "iast_iso".to_string());
+        let tokens = tokenize(text, ctx);
+        assert_eq!(
+            tokens,
+            vec![
+                i,
+                anudaatta,
+                Sh,
+                vm_E,
+                Unknown(" ".to_string()),
+                t,
+                virama,
+                v,
+                vm_O,
+                anudaatta,
+                r,
+                virama,
+                j,
+                vm_E
+            ]
+        )
+    }
 
-        assert_eq!(ctx.input, types::ScriptName::Devanagari);
-        assert_eq!(ctx.output, types::ScriptName::IastIso);
+    fn test_tokenizer_iast_iso() {
+        use Token::*;
+        let text = "i̱ṣe tvo̱rje";
+        let ctx = Context::new("iast_iso".to_string(), "devanagari".to_string());
+        let tokens = tokenize(text, ctx);
+        assert_eq!(
+            tokens,
+            vec![
+                i,
+                anudaatta,
+                Sh,
+                vm_E,
+                Unknown(" ".to_string()),
+                t,
+                virama,
+                v,
+                vm_O,
+                anudaatta,
+                r,
+                virama,
+                j,
+                vm_E
+            ]
+        )
     }
 }

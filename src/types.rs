@@ -1,12 +1,12 @@
 use std::collections::HashMap;
+use std::str::FromStr;
 
 #[allow(non_camel_case_types)]
-#[derive(PartialEq, PartialOrd, Debug, Clone, Copy)]
-#[repr(C)]
+#[derive(PartialEq, PartialOrd, Debug, Clone)]
 #[allow(unused_assignments)]
 pub enum Token {
     // Vowels
-    a = 1,
+    a,
     A,
     i,
     I,
@@ -16,34 +16,50 @@ pub enum Token {
     RRI,
     LLi,
     LLI,
-    _e,
     e,
     E,
     ai,
-    _o,
     o,
     O,
     R, // tamil ra or bandira in telugu
     au,
-    //Yogavahas
-    M = 100,
+    // Vowel marks
+    vm_a,
+    vm_A,
+    vm_i,
+    vm_I,
+    vm_u,
+    vm_U,
+    vm_RRi,
+    vm_RRI,
+    vm_LLi,
+    vm_LLI,
+    vm_e,
+    vm_E,
+    vm_ai,
+    vm_o,
+    vm_O,
+    vm_R,
+    vm_au,
+    // Yogavahas
+    M,
     H,
     cbindu__y,
     // Symbols
-    visarga = 200,
+    visarga,
     cbindu,
     danda,
     dvidanda,
-    // Svara
-    anudaatta = 300,
+    // Svaras
+    anudaatta,
     udaatta,
     svarita,
     gm,
     gg,
-    //virama
-    virama = 400,
+    // Virama
+    virama,
     // Consonants
-    k = 500,
+    k,
     kh,
     g,
     gh,
@@ -77,65 +93,128 @@ pub enum Token {
     s,
     h,
     L,
-    //Others
-    unk = 600,
-    whitespace,
-    newline,
+    // Others
+    Unknown(String),
 }
 
 impl Token {
     pub fn is_vowel(&self) -> bool {
-        if *self < Token::M {
-            return true;
-        }
-        return false;
+        use Token::*;
+        matches!(
+            self,
+            a | A | i | I | u | U | RRi | RRI | LLi | LLI | e | E | ai | o | O | O | R | au
+        )
+    }
+
+    pub fn is_vowel_mark(&self) -> bool {
+        use Token::*;
+        matches!(
+            self,
+            vm_a | vm_A
+                | vm_i
+                | vm_I
+                | vm_u
+                | vm_U
+                | vm_RRi
+                | vm_RRI
+                | vm_LLi
+                | vm_LLI
+                | vm_e
+                | vm_E
+                | vm_ai
+                | vm_o
+                | vm_O
+                | vm_R
+                | vm_au
+        )
     }
 
     pub fn is_yogavaha(&self) -> bool {
-        if (*self < Token::visarga) && (*self >= Token::M) {
-            return true;
-        }
-        return false;
+        use Token::*;
+        matches!(self, M | H | cbindu__y)
     }
 
     pub fn is_consonant(&self) -> bool {
-        if (*self < Token::unk) && (*self >= Token::k) {
-            return true;
-        }
-        return false;
+        use Token::*;
+        matches!(
+            self,
+            k | kh
+                | g
+                | gh
+                | ng
+                | c
+                | ch
+                | j
+                | jh
+                | ny
+                | T
+                | Th
+                | D
+                | Dh
+                | N
+                | t
+                | th
+                | d
+                | dh
+                | n
+                | p
+                | ph
+                | b
+                | bh
+                | m
+                | y
+                | r
+                | l
+                | v
+                | sh
+                | Sh
+                | s
+                | h
+                | L
+        )
     }
 
     pub fn is_virama(&self) -> bool {
-        if (*self == Token::virama) {
-            return true;
-        }
-        return false;
+        matches!(self, Token::virama)
     }
 
     pub fn is_accent(&self) -> bool {
-        if (*self >= Token::anudaatta && *self <= Token::gg) {
-            return true;
-        }
-        return false;
+        use Token::*;
+        matches!(self, anudaatta | udaatta | svarita | gm | gg)
     }
 }
 
 #[derive(PartialEq, PartialOrd, Debug, Clone, Copy)]
-#[repr(C)]
-pub enum ScriptName {
-    // Brahmic scripts are enumerated starting at 1.
-    Devanagari = 1,
+pub enum Script {
+    Devanagari,
     Telugu,
-    // All roman scripts are in the 100 group
-    IastIso = 100,
+    IastIso,
 }
 
-impl ScriptName {
+impl Script {
+    pub fn is_brahmic(&self) -> bool {
+        !self.is_roman()
+    }
+
     pub fn is_roman(&self) -> bool {
-        if *self >= ScriptName::IastIso {
-            return true;
-        }
-        false
+        use Script::*;
+        matches!(self, IastIso)
+    }
+}
+
+#[derive(Debug, PartialEq, Eq)]
+pub struct ConfigError;
+
+impl FromStr for Script {
+    type Err = ConfigError;
+    fn from_str(value: &str) -> Result<Self, Self::Err> {
+        let ret = match value {
+            "devanagari" => Self::Devanagari,
+            "telugu" => Self::Telugu,
+            "iast_iso" => Self::IastIso,
+            _ => return Err(ConfigError),
+        };
+        Ok(ret)
     }
 }
 

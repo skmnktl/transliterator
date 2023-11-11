@@ -1,9 +1,5 @@
-
 pub fn indic_to_chars(input: String) -> Vec<String> {
-    input
-        .chars()
-        .map(|c| c.to_string())
-        .collect::<_>()
+    input.chars().map(|c| c.to_string()).collect::<_>()
 }
 
 pub fn roman_to_graphemes(input: String) -> Vec<String> {
@@ -29,9 +25,6 @@ mod tests {
         .collect::<Vec<String>>();
         assert_eq!(roman_to_graphemes(input), expected);
     }
-
-
-  
 
     #[test]
     fn test_indic_to_chars() {
