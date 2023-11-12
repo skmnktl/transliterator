@@ -2,7 +2,7 @@ use std::collections::HashMap;
 use std::str::FromStr;
 
 #[allow(non_camel_case_types)]
-#[derive(PartialEq, PartialOrd, Debug, Clone)]
+#[derive(PartialEq, PartialOrd, Debug, Clone, Eq, Hash)]
 #[allow(unused_assignments)]
 pub enum Token {
     // Vowels
@@ -93,6 +93,7 @@ pub enum Token {
     s,
     h,
     L,
+    whitespace,
     // Others
     Unknown(String),
 }
@@ -219,7 +220,7 @@ impl FromStr for Script {
 }
 
 pub type RawScriptMap = HashMap<String, HashMap<String, toml::Value>>;
-pub type ScriptMap = HashMap<String, HashMap<String, String>>;
+pub type ScriptMap = HashMap<String, HashMap<Token, String>>;
 
 #[cfg(test)]
 mod tests {

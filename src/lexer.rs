@@ -30,11 +30,10 @@ pub fn read_script(which: Script) -> RawScriptMap {
     toml::from_str(script).unwrap()
 }
 
-pub fn produce_scriptmap_group(
+pub fn produce_scriptmap_group_forwards(
     script: &RawScriptMap,
     group_name: String,
-    invert: bool,
-) -> HashMap<String, String> {
+) -> HashMap<Token, String> {
     let group = match script.get(&group_name) {
         Some(x) => x.clone(),
         None => HashMap::new(),
@@ -43,13 +42,41 @@ pub fn produce_scriptmap_group(
     let mut map = HashMap::new();
     for (key, value) in group.iter() {
         let value = value.to_string().replace(&['\"'], "");
-        if invert {
-            map.insert(value, key.clone());
-        } else {
-            map.insert(key.clone(), value);
-        }
+        map.insert(deva_to_enum(key.clone().as_str()), value);
     }
 
+    map
+}
+
+pub fn produce_scriptmap_group_backwards(
+    script: &RawScriptMap,
+    group_name: String,
+) -> HashMap<Token, String> {
+    let group = match script.get(&group_name) {
+        Some(x) => x.clone(),
+        None => HashMap::new(),
+    };
+
+    let mut map = HashMap::new();
+    for (key, value) in group.iter() {
+        let value = value.to_string().replace(&['\"'], "");
+        map.insert(deva_to_enum(&value), key.clone());
+    }
+
+    map
+}
+
+pub fn produce_scriptmap_group(
+    script: &RawScriptMap,
+    group_name: String,
+    invert: bool,
+) -> HashMap<Token, String> {
+    let map: HashMap<Token, String>;
+    if invert {
+        map = produce_scriptmap_group_backwards(script, group_name)
+    } else {
+        map = produce_scriptmap_group_forwards(script, group_name);
+    }
     map
 }
 
@@ -58,22 +85,74 @@ pub fn produce_scriptmap(script: &RawScriptMap, invert: bool) -> ScriptMap {
     for token_type in TOKEN_TYPES {
         let scriptmap_group = produce_scriptmap_group(script, token_type.to_string(), invert);
         if !scriptmap_group.is_empty() {
-        groups.insert(
-            token_type.to_string(), scriptmap_group
-        );
-    }
+            groups.insert(token_type.to_string(), scriptmap_group);
+        }
     }
     if !groups.contains_key("vowel_marks") {
-        groups.insert(
-            "vowel_marks".to_string(),
-            groups.get("vowels").unwrap().clone()
-        );
+        let mut vowel_marks = HashMap::new();
+        let vm = vec![
+            ("अ", ""),
+            ("आ", "ा"),
+            ("इ", "ि"),
+            ("ई", "ी"),
+            ("उ", "ु"),
+            ("ऊ", "ू"),
+            ("ऋ", "ृ"),
+            ("ॠ", "ॄ"),
+            ("ऌ", "ॢ"),
+            ("ॡ", "ॣ"),
+            ("ऎ", "ॆ"),
+            ("ए", "े"),
+            ("ऐ", "ै"),
+            ("ऒ", "ॊ"),
+            ("ओ", "ो"),
+            ("औ", "ौ"),
+            ("ऍ", "ॅ"),
+            ("ऑ", "ॉ"),
+        ];
+        let vowels_group = groups.get("vowels").unwrap();
+        println!("VOWELS GROUP {:?}", vowels_group);
+        for (vowel, mark) in vm.iter() {
+            let token = deva_to_enum(vowel);
+            let maybe_output = vowels_group.get(&token);
+            println!("Adding mapping: {:?} -> {:?} -> {:?}", mark, token, maybe_output);
+            if maybe_output.is_none(){
+                continue;
+            }
+            let output = maybe_output.unwrap();
+            if invert {
+                vowel_marks.insert(deva_to_enum(vowel), output.to_string());
+            } else {
+                vowel_marks.insert(deva_to_enum(mark), output.to_string());
+            }
+        }
+        let ph = vec![(" ", " ")];
+        let mut placeholders = HashMap::new();
+        for (p, m) in ph.iter() {
+            if invert {
+                placeholders.insert(deva_to_enum(p), m.to_string());
+            } else {
+                placeholders.insert(deva_to_enum(m), p.to_string());
+            }
+        }
+        groups.insert("vowel_marks".to_string(), vowel_marks);
+        groups.insert("placeholders".to_string(), placeholders);
     }
+
+    /*
+    
+    for (key, subgroup) in &groups {
+        for (subkey, value) in subgroup.iter() {
+            println!("KEY '{key}' --> SUBKEY '{subkey:?}' --> VALUE '{value}'");
+        }
+    }
+    */
+    
     groups
 }
 
-pub fn deva_to_enum(input: String) -> Token {
-    match input.as_str() {
+pub fn deva_to_enum(input: &str) -> Token {
+    match input {
         "अ" => Token::a,
         "आ" => Token::A,
         "इ" => Token::i,
@@ -123,6 +202,7 @@ pub fn deva_to_enum(input: String) -> Token {
         "ष" => Token::Sh,
         "स" => Token::s,
         "ह" => Token::h,
+        "" => Token::vm_a,
         "ा" => Token::vm_A,
         "ि" => Token::vm_i,
         "ी" => Token::vm_I,
@@ -146,7 +226,8 @@ pub fn deva_to_enum(input: String) -> Token {
         "\u{952}" => Token::anudaatta,
         "।" => Token::danda,
         "॥" => Token::dvidanda,
-        _ => Token::Unknown(input),
+        " " => Token::whitespace,
+        _ => Token::Unknown(input.to_string()),
     }
 }
 
@@ -207,6 +288,25 @@ fn enum_to_deva(token: &Token) -> String {
         Token::Sh => "ष",
         Token::s => "स",
         Token::h => "ह",
+        
+        Token::vm_a => "अ",
+        Token::vm_A => "आ",
+        Token::vm_i => "इ",
+        Token::vm_I => "ई",
+        Token::vm_u => "उ",
+        Token::vm_U => "ऊ",
+        Token::vm_RRi => "ऋ",
+        Token::vm_RRI => "ॠ",
+        Token::vm_LLi => "ऌ",
+        Token::vm_LLI => "ॡ",
+        Token::vm_e => "ऎ",
+        Token::vm_E => "ए",
+        Token::vm_ai => "ऐ",
+        Token::vm_o => "ऒ",
+        Token::vm_O => "ओ",
+        Token::vm_au => "औ",
+        /*
+        Token::vm_a => "",
         Token::vm_A => "ा",
         Token::vm_i => "ि",
         Token::vm_I => "ी",
@@ -222,6 +322,7 @@ fn enum_to_deva(token: &Token) -> String {
         Token::vm_o => "ॊ",
         Token::vm_O => "ो",
         Token::vm_au => "ौ",
+         */
         Token::cbindu__y => "ँ",
         Token::M => "ं",
         Token::H => "ः",
@@ -230,6 +331,7 @@ fn enum_to_deva(token: &Token) -> String {
         Token::anudaatta => "॒",
         Token::danda => "।",
         Token::dvidanda => "॥",
+        Token::whitespace => " ",
         _ => " _unk_ ",
     }
     .to_string()
