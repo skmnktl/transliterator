@@ -100,10 +100,18 @@ fn render(tokens: &Vec<Token>, ctx: &Context) -> String {
 }
 
 fn main() {
-    let text = "अश्म॒न्नूर्जं॒ पर्व॑ते ".to_string();
+    let texta = "अश्म॒न्नूर्जं॒ पर्व॑ते ".to_string();
 
     let ctx = Context::new("devanagari".to_string(), "iast_iso".to_string());
-    let tokens = tokenize(&text, &ctx);
+    let tokens = tokenize(&texta, &ctx);
+    println!("TOKENS {:?}", tokens);
+    let output = render(&tokens, &ctx);
+    println!("OUTPUT {}", output);
+
+
+    let textb = "aśma॒nnūrjaṃ॒parva̭te";
+    let ctx = Context::new("iast_iso".to_string(), "devanagari".to_string());
+    let tokens = tokenize(&textb, &ctx);
     println!("TOKENS {:?}", tokens);
     let output = render(&tokens, &ctx);
     println!("OUTPUT {}", output);
